@@ -1,0 +1,3 @@
+Trying to make sure running the same 1m fly two plume experiment yields approximately the same curve.
+
+Forgot about the pool random instance phenomenon.

@@ -33,8 +33,9 @@ from multiprocessing import Pool
 
 #def f(detection_threshold):
 # def f(cast_timeout):
-def f(cast_delay):
+# def f(cast_delay):
 # def f(cast_interval):
+def f(iteration):
 
     no_repeat_tracking = True
 
@@ -43,7 +44,7 @@ def f(cast_delay):
     detection_threshold = 0.05
     cast_timeout = 20.
     cast_interval = [1,3]
-    # cast_delay = 3.
+    cast_delay = 3.
 
     #Wind angle
     wind_angle = 5*np.pi/4
@@ -58,7 +59,9 @@ def f(cast_delay):
     # file_name = file_name +'cast_timeout_'+str(cast_timeout)
     # file_name = file_name +'cast_interval_'+str(cast_interval)
     # file_name = file_name +'cast_delay_'+str(cast_delay)
-    file_name = file_name +'errorless_surging_cast_delay_'+str(cast_delay)
+    # file_name = file_name +'errorless_surging_cast_delay_'+str(cast_delay)
+
+    file_name = file_name +'default_params_iter_'+str(iteration)
 
     # file_name='for_viewing_purposes'
     # file_name='debugging_zero_peak_3'
@@ -278,5 +281,8 @@ pool = Pool(processes=3)
 # pool.map(f, cast_intervals)
 # pool.map(f, cast_intervals1)
 
-cast_delays = [0.5,3,5,10,20,40]
-pool.map(f,cast_delays)
+# cast_delays = [0.5,3,5,10,20,40]
+# pool.map(f,cast_delays)
+
+iterations = [1,2,3,4]
+pool.map(f,iterations)

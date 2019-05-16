@@ -10,13 +10,21 @@ def f(detection_threshold):
 
     file_name='1m_uniform_release_times_'
 
-    # param_spec_string = 'detection_threshold_'+str(detection_threshold)
+    param_spec_string = 'detection_threshold_'+str(detection_threshold)
+    title_string = 'Detection Threshold: '+str(detection_threshold)
+
     #
     # param_spec_string = 'cast_timeout_'+str(detection_threshold)
     # title_string = 'Cast Timeout: '+str(detection_threshold)
 
-    param_spec_string = 'cast_delay_'+str(detection_threshold)
-    title_string = 'Cast Delay: '+str(detection_threshold)
+    # param_spec_string = 'cast_delay_'+str(detection_threshold)
+    # title_string = 'Cast Delay: '+str(detection_threshold)
+
+    # param_spec_string = 'errorless_surging_cast_delay_'+str(detection_threshold)
+    # title_string = 'No Surging Error; Cast Delay: '+str(detection_threshold)
+    #
+    # param_spec_string = 'cast_interval_'+str(detection_threshold)
+    # title_string = 'Cast Interval: '+str(detection_threshold)
 
     file_name = file_name + param_spec_string
 
@@ -74,7 +82,7 @@ pool = Pool(processes=6)
 
 # detection_thresholds = [0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225]
 # pool.map(f, detection_thresholds)
-# f(0.025)
+f(0.05)
 
 # cast_timeouts=[1,10,15,40,60,100]
 # pool.map(f, cast_timeouts)
@@ -87,7 +95,21 @@ pool = Pool(processes=6)
 #     [8,24],
 #     [10,30],
 #     [20,60]]
+
+# cast_intervals= [[0.5,1.5],
+#     [4,12],
+#     [20,60]]
+
+# cast_intervals= [[1,3],
+#     [2,6],
+#     [8,24],
+#     [10,30]]
+# #
 # pool.map(f, cast_intervals)
 
-cast_delays = [0.5,3,5,10,20,40]
-pool.map(f,cast_delays)
+#
+# cast_delays = [0.5,3,5,10,20,40]
+# pool.map(f,cast_delays)
+
+# cast_delays = [0.5,3,5]
+# pool.map(f,cast_delays)

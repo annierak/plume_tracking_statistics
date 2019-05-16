@@ -1,0 +1,7 @@
+Trying to get rid of the bump in the curve if it is an artifact of secondary waves of flies coming through due to the release geometry. To this end, start all flies at or downwind of traps (x>=0), and make sure to stop counting flies that have passed through the 
+
+Will use default params
+
+To document:
+--Making a video 
+--grabbing every 2 min

@@ -25,10 +25,8 @@ from collectors import TrackBoutCollector
 
 from multiprocessing import Pool
 
-#In this simplified version of line_start_two_plumes, we just track the
-#interception distances of flies which successfully track the plume to the source
-#the first time they encounter it. We don't count flies that successfully tracked
-#the second or nth time they encountered the plume.
+#Testing to see if the function collector.update_for_missed_detection() is working right
+#by some colored scatter plotting.
 
 no_repeat_tracking = True
 
@@ -40,10 +38,8 @@ wind_mag = 1.6
 arena_size = 1000.
 
 #file info
-file_name='1m_uniform_release_times'
-
-cast_delay = 10.
-file_name = file_name +'video_errorless_surging_cast_delay_'+str(cast_delay)
+# file_name='testing_centerline_passthru'
+file_name='video_for_bump_debugging'
 
 
 # file_name='for_viewing_purposes'
@@ -58,7 +54,7 @@ times_real_time = 30 # seconds of simulation / sec in video
 capture_interval = int(np.ceil(times_real_time*(1./frame_rate)/dt))
 
 
-simulation_time = 10.*60. #seconds
+simulation_time = 20.*60. #seconds
 release_delay = 25.*60#/(wind_mag)
 
 t_start = 0.0
@@ -67,6 +63,8 @@ t = 0. - release_delay
 # Set up figure
 fig = plt.figure(figsize=(11, 11))
 ax = fig.add_subplot(111)
+
+timer_text = ax.text(0.5,1.05,'0',transform=ax.transAxes)
 
 #Video
 FFMpegWriter = animate.writers['ffmpeg']
@@ -156,20 +154,21 @@ array_gen = processors.ConcentrationArrayGenerator(
 
 #Start a bunch of flies with uniformly random headings at (0,0)
 wind_slippage = (0.,0.)
-# swarm_size=20000
+swarm_size=20000
 # swarm_size=200000
-swarm_size=1000000
+# swarm_size=1000000
 # swarm_size=2000
 
 release_times = scipy.random.uniform(0,simulation_time/2,size=swarm_size)
+release_times = np.zeros((swarm_size))
 
 swarm_param = {
             'swarm_size'          : swarm_size,
             'heading_data'        : None,
             'initial_heading'     : np.radians(np.random.uniform(0.0,360.0,(swarm_size,))),
-            'x_start_position'    : np.linspace(-arena_size,150,swarm_size),
-            'y_start_position'    : np.linspace(-arena_size,150,swarm_size),
-            'flight_speed'        : np.full((swarm_size,), 1.5),
+            'x_start_position'    : np.linspace(-arena_size,50,swarm_size),
+            'y_start_position'    : np.linspace(-arena_size,50,swarm_size),
+            'flight_speed'        : np.full((swarm_size,), 1.6),
             'release_time'        : release_times,
             'release_delay'       : release_delay,
             'cast_interval'       : [1,3],#cast_interval,
@@ -182,7 +181,7 @@ swarm_param = {
             'low_pass_filter_length':3, #seconds
             'dt_plot': capture_interval*dt,
             't_stop':simulation_time,
-            'cast_timeout': 100,
+            'cast_timeout': 20,
             'airspeed_saturation':False
             }
 
@@ -229,27 +228,23 @@ r_sq_max=20;epsilon=0.00001;N=1e6
 array_gen_flies = processors.ConcentrationValueFastCalculator(
             box_min,box_max,r_sq_max,epsilon,puff_mol_amount,N)
 
-#Initial fly plotting
-#Sub-dictionary for color codes for the fly modes
 Mode_StartMode = 0
 Mode_FlyUpWind = 1
 Mode_CastForOdor = 2
 Mode_Trapped = 3
 
-edgecolor_dict = {Mode_StartMode : 'blue',
-Mode_FlyUpWind : 'red',
-Mode_CastForOdor : 'red',
-Mode_Trapped :   'black'}
 
-facecolor_dict = {Mode_StartMode : 'blue',
-Mode_FlyUpWind : 'red',
-Mode_CastForOdor : 'white',
-Mode_Trapped :   'black'}
+#Initial fly plotting
+#Sub-dictionary for color codes for the fly modes
 
-fly_edgecolors = [edgecolor_dict[mode] for mode in swarm.mode]
-fly_facecolors =  [facecolor_dict[mode] for mode in swarm.mode]
+facecolor_dict = {
+    2 : 'yellow',
+    0 : 'purple',
+    1 : 'green'}
+
+fly_facecolors =  ['yellow' for mode in swarm.mode]
 fly_dots = plt.scatter(swarm.x_position, swarm.y_position,
-    edgecolor=fly_edgecolors,facecolor = fly_facecolors,alpha=0.9)
+    facecolor = fly_facecolors,alpha=0.9)
 
 #Plot traps
 for x,y in traps.param['source_locations']:
@@ -294,17 +289,20 @@ while t<simulation_time:
                 newly_surging = newly_surging & (~ever_tracked_last_step)
             collector.update_for_detection(
                 newly_surging,swarm.x_position[newly_surging],swarm.y_position[newly_surging])
+            collector.update_for_missed_detection(swarm.x_position,swarm.y_position
+                ,dispersal_mode_flies,ever_tracked_last_step)
 
         t+= dt
 
     if t>0:
         # Plotting
         fly_dots.set_offsets(np.c_[swarm.x_position,swarm.y_position])
-        fly_edgecolors = [edgecolor_dict[mode] for mode in swarm.mode]
-        fly_facecolors =  [facecolor_dict[mode] for mode in swarm.mode]
-        fly_dots.set_edgecolor(fly_edgecolors)
+        color_key = ((~np.isnan(collector.passed_through_distances))|ever_tracked_last_step).astype(int)
+        color_key[~np.isnan(collector.entry_distances)] = 2
+        fly_facecolors =  [facecolor_dict[mode] for mode in color_key]
         fly_dots.set_facecolor(fly_facecolors)
 
+        timer_text.set_text(str(t/60.)[0:4]+' min')
 
         if t<2.:
             conc_array = array_gen.generate_single_array(plume_model.puffs)
@@ -318,7 +316,7 @@ while t<simulation_time:
             conc_im.set_norm(n)
 
 
-        plt.pause(0.001)
+        # plt.pause(0.001)
         writer.grab_frame()
 
 writer.finish()
