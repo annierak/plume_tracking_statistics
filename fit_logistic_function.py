@@ -16,6 +16,13 @@ def logistic3(x,K,B,x_0):
         Q = 1.
         return -K+K/((1.+Q*np.exp(-B*(x-x_0))))
 
+def logisticplus(x,K,B,x_0,c):
+        Q = 1.
+        return -K+K/((1.+Q*np.exp(-B*(x-x_0))))+c/(x**1)
+        # return -K+K/((1.+Q*np.exp(-B*(x-x_0))))+np.exp(c*x)
+
+
+
 def f(detection_threshold):
 
     file_name='1m_uniform_release_times_'
@@ -72,7 +79,7 @@ def f(detection_threshold):
     n_successes,_,_ = plt.hist(success_entry_distances,bins,alpha=0.5,color='b',histtype='step')
     plt.clf()
     probs = n_successes/(fly_release_density_per_bin)
-    plt.plot(bins[:-1],probs,'o  ')
+    plt.plot(bins[1:],probs,'o  ')
 
     plt.title(title_string,color='purple')
     plt.xlim(0,max_trap_distance)
@@ -82,9 +89,9 @@ def f(detection_threshold):
 
 
     #Fitting portion
-    initial_guess = (-1.,3.,1.,0.5)
 
     #This bit checks that the fitting algorithm re-finds inputted parameters.
+    # initial_guess = (-.5,.01,500.,0.5)
     # bins_dummy =  np.linspace(1,10,10000)
     # # probs_dummy = logistic(bins_dummy,-0.5,.1,6.,0.1)
     # probs_dummy = logistic3(bins_dummy,-0.5,2.,6.)
@@ -105,25 +112,52 @@ def f(detection_threshold):
     # plt.plot(bins_dummy,prob_est,color='red',label='logistic fit')
     # plt.plot(bins_dummy,probs_dummy,'o ',markersize=.5)
 
-    p_opt,p_cov = curve_fit(logistic3,bins[:-1],
-        probs,p0=initial_guess[:-1])
+    initial_guess = (-.5,.01,500.,0.5)
+    initial_guess = (-.13,.02,550.,0.5)
+    initial_guess = (-.13,.02,550.,500.)
+    # initial_guess = (-.13,.02,550.,-5.)
 
+    # p_opt,p_cov = curve_fit(logistic3,bins[:-1],
+    #     probs,p0=initial_guess[1:],bounds=([-10.,-np.inf,10.,],[0.,np.inf,max_trap_distance]))
+
+    try:
+        p_opt,p_cov = curve_fit(logisticplus,bins[1:],
+            probs,p0=initial_guess,bounds=([-10.,-np.inf,10.,-np.inf],[0.,np.inf,max_trap_distance,np.inf]))
+    except(RuntimeError):
+        print('Fitting failed for '+str(file_name))
+        return
     # K_est,B_est,x_0_est,v_est = p_opt
-    K_est,B_est,x_0_est = p_opt
-    prob_est = logistic3(bins[:-1],K_est,B_est,x_0_est)
+    # K_est,B_est,x_0_est = p_opt
+    K_est,B_est,x_0_est,c_est = p_opt
+    # print(p_opt)
+
+    # prob_est = logistic3(bins[:-1],K_est,B_est,x_0_est)
+    # plt.plot(bins[:-1],prob_est,color='red',label='logistic fit')
+    # plt.plot(bins[:-1],logistic3(bins[:-1],*initial_guess[:-1   ]),color='orange')
+
+    prob_est = logisticplus(bins[1:],K_est,B_est,x_0_est,c_est)
     plt.plot(bins[:-1],prob_est,color='red',label='logistic fit')
-
-
-
-
+    # plt.plot(bins[1:],logisticplus(bins[1:],*initial_guess),'o',color='orange')
     plt.legend()
-    plt.show()
+
+    # plt.figure()
+    # plt.scatter(np.array(initial_guess),np.array(p_opt))
+    # plt.show()
+    # print(initial_guess)
 
     plt.savefig(fig_save_name+'.png',format='png')
 
+    output_file = file_name + '_logistic_fit_params.pkl'
+    params_dict = dict(zip(['K','B','x_0','c'],p_opt))
 
-f(0.05)
+    with open(output_file, 'w') as f:
+        pickle.dump(params_dict,f)
+
+
+
+# f(0.05)
 
 # detection_thresholds = [0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225]
-# pool = Pool(processes=6)
-# pool.map(f, detection_thresholds)
+detection_thresholds = [0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225]
+pool = Pool(processes=6)
+pool.map(f, detection_thresholds)

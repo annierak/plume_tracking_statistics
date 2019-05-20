@@ -31,19 +31,19 @@ from multiprocessing import Pool
 #the second or nth time they encountered the plume.
 
 
-#def f(detection_threshold):
+def f(detection_threshold):
 # def f(cast_timeout):
-def f(cast_delay):
+# def f(cast_delay):
 # def f(cast_interval):
 
     no_repeat_tracking = True
 
 
     #Comment these out depending on which parameter we're iterating through
-    detection_threshold = 0.05
+    # detection_threshold = 0.05
     cast_timeout = 20.
     cast_interval = [1,3]
-    # cast_delay = 3.
+    cast_delay = 3.
 
     #Wind angle
     wind_angle = 5*np.pi/4
@@ -54,11 +54,11 @@ def f(cast_delay):
 
     #file info
     file_name='1m_uniform_release_times_'
-#    file_name = file_name +'detection_threshold_'+str(detection_threshold)
+    file_name = file_name +'detection_threshold_'+str(detection_threshold)
     # file_name = file_name +'cast_timeout_'+str(cast_timeout)
     # file_name = file_name +'cast_interval_'+str(cast_interval)
     # file_name = file_name +'cast_delay_'+str(cast_delay)
-    file_name = file_name +'errorless_surging_cast_delay_'+str(cast_delay)
+    # file_name = file_name +'errorless_surging_cast_delay_'+str(cast_delay)
 
     # file_name='for_viewing_purposes'
     # file_name='debugging_zero_peak_3'
@@ -72,7 +72,8 @@ def f(cast_delay):
     capture_interval = int(np.ceil(times_real_time*(1./frame_rate)/dt))
 
 
-    simulation_time = 20.*60. #seconds
+#    simulation_time = 20.*60. #seconds
+    simulation_time = 12.*60. #seconds
     release_delay = 25.*60#/(wind_mag)
 
     t_start = 0.0
@@ -173,8 +174,8 @@ def f(cast_delay):
                 'swarm_size'          : swarm_size,
                 'heading_data'        : None,
                 'initial_heading'     : np.radians(np.random.uniform(0.0,360.0,(swarm_size,))),
-                'x_start_position'    : np.linspace(-arena_size,150,swarm_size),
-                'y_start_position'    : np.linspace(-arena_size,150,swarm_size),
+                'x_start_position'    : np.linspace(-arena_size,50,swarm_size),
+                'y_start_position'    : np.linspace(-arena_size,50,swarm_size),
                 'flight_speed'        : np.full((swarm_size,), 1.5),
                 'release_time'        : release_times,
                 'release_delay'       : release_delay,
@@ -252,17 +253,22 @@ def f(cast_delay):
                     newly_surging = newly_surging & (~ever_tracked_last_step)
                 collector.update_for_detection(
                     newly_surging,swarm.x_position[newly_surging],swarm.y_position[newly_surging])
+                collector.update_for_missed_detection(swarm.x_position,swarm.y_position
+                    ,dispersal_mode_flies,ever_tracked_last_step)
+
 
             t+= dt
 
     #Save the collector object with pickle
     with open(output_file, 'w') as f:
+        swarm_param.update({'simulation_duration':t})
         pickle.dump((swarm_param,collector),f)
 
-pool = Pool(processes=3)
+pool = Pool(processes=4)
 
 #detection_thresholds = [0.025,0.075,0.1,0.125,0.15,0.175,0.2,0.225]
-#pool.map(f, detection_thresholds)
+detection_thresholds = [0.025,0.05,0.075,0.1]#,0.125,0.15,0.175,0.2,0.225]
+pool.map(f, detection_thresholds)
 
 # cast_timeouts=[1,10,15,40,60,100]
 # pool.map(f, cast_timeouts)
@@ -278,5 +284,5 @@ pool = Pool(processes=3)
 # pool.map(f, cast_intervals)
 # pool.map(f, cast_intervals1)
 
-cast_delays = [0.5,3,5,10,20,40]
-pool.map(f,cast_delays)
+# cast_delays = [0.5,3,5,10,20,40]
+# pool.map(f,cast_delays)

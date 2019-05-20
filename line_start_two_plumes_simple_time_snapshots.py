@@ -274,6 +274,7 @@ while t<simulation_time:
 
         if (t>1.)&((t%save_interval) <= 0.24):
             output_file = file_name+'t_'+str(t/60.)[0:5]+'min.pkl'
+            swarm_param.update({'simulation_duration':t})
             with open(output_file, 'w') as f:
                 pickle.dump((swarm_param,collector),f)
 

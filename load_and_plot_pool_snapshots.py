@@ -85,5 +85,5 @@ def f(duration):
 
 pool = Pool(processes=6)
 
-durations = [2.0,4.0,6.0,8.0,10.0,12.0,14.0,16.0,18.0]#,20.0]
+durations = [2.0,4.0,6.0,8.0,10.0,12.0]#,14.0,16.0,18.0]#,20.0]
 pool.map(f,durations)
