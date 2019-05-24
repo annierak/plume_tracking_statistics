@@ -259,7 +259,7 @@ for x,y in traps.param['source_locations']:
 
 
 plt.ion()
-# plt.show()
+plt.show()
 
 #Start time loop
 while t<simulation_time:

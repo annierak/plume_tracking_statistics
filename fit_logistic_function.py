@@ -151,7 +151,7 @@ def f(detection_threshold):
     params_dict = dict(zip(['K','B','x_0','c'],p_opt))
 
     with open(output_file, 'w') as f:
-        pickle.dump(params_dict,f)
+        pickle.dump((params_dict,swarm_param),f)
 
 
 

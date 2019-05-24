@@ -159,12 +159,14 @@ wind_slippage = (0.,0.)
 swarm_size=1000000
 # swarm_size=2000
 
-release_times = scipy.random.uniform(0,simulation_time/2,size=swarm_size)
+# release_times = scipy.random.uniform(0,simulation_time/2,size=swarm_size)
+release_times = scipy.zeros((swarm_size))
 
 swarm_param = {
             'swarm_size'          : swarm_size,
             'heading_data'        : None,
-            'initial_heading'     : np.radians(np.random.uniform(0.0,360.0,(swarm_size,))),
+            # 'initial_heading'     : np.radians(np.random.uniform(0.0,360.0,(swarm_size,))),
+            'initial_heading'     : np.radians(np.random.choice([135.,315.],(swarm_size,))),
             'x_start_position'    : np.linspace(-arena_size,50,swarm_size),
             'y_start_position'    : np.linspace(-arena_size,50,swarm_size),
             'flight_speed'        : np.full((swarm_size,), 1.6),
