@@ -112,30 +112,31 @@ def f(detection_threshold):
     # plt.plot(bins_dummy,prob_est,color='red',label='logistic fit')
     # plt.plot(bins_dummy,probs_dummy,'o ',markersize=.5)
 
-    #----------end fitting test
+    initial_guess = (-.5,.01,500.,0.5)
+    initial_guess = (-.13,.02,550.,0.5)
+    initial_guess = (-.13,.02,550.,500.)
+    # initial_guess = (-.13,.02,550.,-5.)
 
-    # initial_guess = (-.5,.01,500.,0.5)
-    # initial_guess = (-.13,.02,550.,0.5)
-    initial_guess = (-.13,.02,550.)
+    # p_opt,p_cov = curve_fit(logistic3,bins[:-1],
+    #     probs,p0=initial_guess[1:],bounds=([-10.,-np.inf,10.,],[0.,np.inf,max_trap_distance]))
 
     try:
-        p_opt,p_cov = curve_fit(logistic3,bins[:-1],
-            probs,p0=initial_guess[1:],bounds=([-10.,-np.inf,10.,],[0.,np.inf,max_trap_distance]))
-
+        p_opt,p_cov = curve_fit(logisticplus,bins[1:],
+            probs,p0=initial_guess,bounds=([-10.,-np.inf,10.,-np.inf],[0.,np.inf,max_trap_distance,np.inf]))
     except(RuntimeError):
         print('Fitting failed for '+str(file_name))
         return
     # K_est,B_est,x_0_est,v_est = p_opt
-    K_est,B_est,x_0_est = p_opt
-    # K_est,B_est,x_0_est,c_est = p_opt
+    # K_est,B_est,x_0_est = p_opt
+    K_est,B_est,x_0_est,c_est = p_opt
     # print(p_opt)
 
-    prob_est = logistic3(bins[:-1],K_est,B_est,x_0_est)
-    plt.plot(bins[:-1],prob_est,color='red',label='logistic fit')
-    plt.plot(bins[:-1],logistic3(bins[:-1],*initial_guess[:-1   ]),color='orange')
-
-    # prob_est = logisticplus(bins[1:],K_est,B_est,x_0_est,c_est)
+    # prob_est = logistic3(bins[:-1],K_est,B_est,x_0_est)
     # plt.plot(bins[:-1],prob_est,color='red',label='logistic fit')
+    # plt.plot(bins[:-1],logistic3(bins[:-1],*initial_guess[:-1   ]),color='orange')
+
+    prob_est = logisticplus(bins[1:],K_est,B_est,x_0_est,c_est)
+    plt.plot(bins[:-1],prob_est,color='red',label='logistic fit')
     # plt.plot(bins[1:],logisticplus(bins[1:],*initial_guess),'o',color='orange')
     plt.legend()
 
@@ -146,8 +147,8 @@ def f(detection_threshold):
 
     plt.savefig(fig_save_name+'.png',format='png')
 
-    output_file = file_name + '_logistic3_fit_params.pkl'
-    params_dict = dict(zip(['K','B','x_0'],p_opt))
+    output_file = file_name + '_logistic_fit_params.pkl'
+    params_dict = dict(zip(['K','B','x_0','c'],p_opt))
 
     with open(output_file, 'w') as f:
         pickle.dump((params_dict,swarm_param),f)
