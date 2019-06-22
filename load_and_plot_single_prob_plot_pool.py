@@ -37,7 +37,12 @@ def f(detection_threshold):
         (swarm_param,collector) = pickle.load(f)
 
     num_flies = swarm_param['swarm_size']
-    fly_release_line_len =  np.sqrt(2)*1150
+
+    fly_release_line_len = int(np.sqrt(
+        (np.max(swarm.param['x_start_position'])-np.min(swarm.param['x_start_position']))**2+
+        (np.max(swarm.param['y_start_position'])-np.min(swarm.param['y_start_position']))**2
+            ))
+
 
     max_trap_distance = 1000
     num_bins = 100
@@ -78,6 +83,7 @@ pool = Pool(processes=6)
 
 # detection_thresholds = [0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225]
 # detection_thresholds = [0.025,0.075,0.1,0.125,0.15,0.175,0.2,0.225]
+# detection_thresholds = [0.025,0.05,0.075,0.1]#,0.125,0.15,0.175,0.2,0.225]
 detection_thresholds = [0.025,0.05,0.075,0.1]#,0.125,0.15,0.175,0.2,0.225]
 pool.map(f, detection_thresholds)
 # f(0.05)

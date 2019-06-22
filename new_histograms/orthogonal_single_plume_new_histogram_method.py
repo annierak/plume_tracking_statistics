@@ -23,16 +23,11 @@ import odor_tracking_sim.wind_models as wind_models
 import odor_tracking_sim.simulation_running_tools as srt
 from pompy import models,processors
 sys.path.append("..")
-# from ... import collectors
 
-from collectors import TrackBoutCollector
+from collectors import TrackBoutCollector,FlyCategorizer
 
 from multiprocessing import Pool
 
-#In this simplified version, we just track the
-#interception distances of flies which successfully track the plume to the source
-#the first time they encounter it. We don't count flies that successfully tracked
-#the second or nth time they encountered the plume.
 
 detection_threshold = 0.05
 # detection_threshold = 0.1
@@ -48,14 +43,14 @@ cast_interval = [1,3]
 cast_delay = 3.
 
 #Wind angle
-wind_angle = 5*np.pi/4
+wind_angle = 0.
 wind_mag = 1.6
 
 #arena size
 arena_size = 1000.
 
 #file info
-file_name='two_histogram_video_1_minus_S_1m'
+file_name='categorizer_method_1m_sustained_release'
 output_file = file_name+'.pkl'
 
 #Timing
@@ -92,7 +87,7 @@ wind_field_noiseless = wind_models.WindField(param=wind_param)
 
 #traps
 trap_radius = 0.5
-location_list = [(0,100) ]
+location_list = [(0,-100) ]
 strength_list = [1]
 trap_param = {
         'source_locations' : location_list,
@@ -162,17 +157,17 @@ wind_slippage = (0.,0.)
 # swarm_size=20000
 # swarm_size=200000
 swarm_size=1000000
-swarm_size=2000
+# swarm_size=2000
 
-# release_times = scipy.random.uniform(0,simulation_time/2,size=swarm_size)
-release_times = np.zeros(shape=swarm_size)
+release_times = scipy.random.uniform(0,simulation_time/2,size=swarm_size)
+# release_times = np.zeros(shape=swarm_size)
 
 swarm_param = {
             'swarm_size'          : swarm_size,
             'heading_data'        : None,
-            'initial_heading'     : np.radians(np.full((swarm_size,),135.)), #for orthogonal departure
-            'x_start_position'    : np.linspace(-arena_size,50,swarm_size),
-            'y_start_position'    : np.linspace(-arena_size,50,swarm_size),
+            'initial_heading'     : np.radians(np.full((swarm_size,),270.)), #for orthogonal departure
+            'x_start_position'    : np.arange(0.,1000.,1000./swarm_size),
+            'y_start_position'    : np.zeros(swarm_size),
             'flight_speed'        : np.full((swarm_size,), 1.5),
             'release_time'        : release_times,
             'release_delay'       : release_delay,
@@ -207,10 +202,10 @@ fly_release_density_per_bin = fly_release_density*bin_width
 bins=np.linspace(0,max_trap_distance,num_bins)
 
 #Set up collector object
-
-#Check that source_pos is the right size
 collector = TrackBoutCollector(swarm_size,wind_angle,source_pos,repeats=False)
 
+#Set up categorizer object
+categorizer = FlyCategorizer(swarm_size)
 
 #Initial concentration plotting
 conc_array = array_gen.generate_single_array(plume_model.puffs)
@@ -273,89 +268,6 @@ for x,y in traps.param['source_locations']:
 
 
 
-#Set up live histogram plot
-fig2 = plt.figure(figsize=(10,11))
-ax = plt.subplot(3,1,1)
-
-#(1)--------
-success_entry_distances = collector.success_distances
-success_entry_distances = success_entry_distances[~np.isnan(success_entry_distances)]
-success_entry_distances = success_entry_distances[~np.isinf(success_entry_distances)]
-
-n_successes,_ = np.histogram(success_entry_distances,bins)
-curve1, = plt.plot(bins[:-1],n_successes/(fly_release_density_per_bin),'-o',
-    label='Succeeded the first time after detecting',alpha=0.5)
-
-#(2)--------
-failure_entry_distances = collector.failure_lengths[0,:]
-failure_entry_distances = failure_entry_distances[~np.isnan(failure_entry_distances)]
-failure_entry_distances = failure_entry_distances[~np.isinf(failure_entry_distances)]
-
-n_failures,_ = np.histogram(failure_entry_distances,bins)
-curve2, = plt.plot(bins[:-1],n_failures/(fly_release_density_per_bin),'-o',
-    label='Entrance point before failing',alpha=0.5)
-
-#(6)--------
-passed_through_distances = collector.passed_through_distances
-passed_through_distances = passed_through_distances[~np.isnan(passed_through_distances)]
-passed_through_distances = passed_through_distances[~np.isinf(passed_through_distances)]
-
-n_passed,_ = np.histogram(passed_through_distances,bins)
-curve6, = plt.plot(bins[:-1],n_passed/(fly_release_density_per_bin),'-o',
-    label='Passed straight through here',alpha=0.5)
-
-
-#(3)--------
-no1stsuccess_distances = collector.didnt_succeed_first_time_distances
-no1stsuccess_distances = no1stsuccess_distances[~np.isnan(no1stsuccess_distances)]
-no1stsuccess_distances = no1stsuccess_distances[~np.isinf(no1stsuccess_distances)]
-
-no1s_entries,_ = np.histogram(no1stsuccess_distances,bins)
-curve3, = plt.plot(bins[:-1],no1s_entries/(fly_release_density_per_bin),'-o',
-    label='Didn\'t succeed first time when first entered here',alpha=0.5)
-
-
-plt.xlim(0,max_trap_distance)
-plt.xlabel('Distance from Trap (m)')
-plt.ylabel('Fraction')
-text = ax.text(0.2,1,'0 s',transform=ax.transAxes)
-plt.legend(bbox_to_anchor=(1., 1.4))
-
-ax2 = plt.subplot(3,1,2)
-color.cycle_cmap(3, cmap='Dark2', ax=ax2)
-
-#(4)--------
-surging_distances = collector.compute_plume_distance(
-    swarm.x_position[swarm.mode == Mode_FlyUpWind],
-    swarm.y_position[swarm.mode == Mode_FlyUpWind])
-
-n_surging,_ = np.histogram(surging_distances,bins)
-curve4, = plt.plot(bins[:-1],n_surging/(fly_release_density_per_bin),'-o',
-    label='Currently surging here',alpha=0.5)
-
-#(5)--------
-casting_distances = collector.compute_plume_distance(
-    swarm.x_position[swarm.mode == Mode_CastForOdor],
-    swarm.y_position[swarm.mode == Mode_CastForOdor])
-
-n_casting,_ = np.histogram(casting_distances,bins)
-curve5, = plt.plot(bins[:-1],n_casting/(fly_release_density_per_bin),'-o',
-    label='Currently casting here',alpha=0.5)
-
-plt.xlim(0,max_trap_distance)
-plt.xlabel('Distance from Trap (m)')
-plt.ylabel('Fraction')
-plt.legend(bbox_to_anchor=(1., -0.3))
-
-
-#Video
-FFMpegWriter = animate.writers['ffmpeg']
-metadata = {'title':file_name,}
-writer = FFMpegWriter(fps=frame_rate, metadata=metadata)
-writer.setup(fig2, file_name+'.mp4', 500)
-
-
-
 # plt.ion()
 # plt.show()
 #Start time loop
@@ -394,118 +306,38 @@ while t<simulation_time:
 
             collector.update_for_missed_detection(swarm.x_position,swarm.y_position,
                 dispersal_mode_flies,ever_tracked_last_step)
+
+            categorizer.update(swarm,collector,newly_trapped,newly_dispersing)
+
         t+= dt
 
-    if t>0: #Histogram updating
-
-        text.set_text(str(np.floor(t/60.))[0]+' min '+str(t%60.)[0:2]+' sec')
-
-        #(1)--------
-        success_entry_distances = collector.success_distances
-        success_entry_distances = success_entry_distances[~np.isnan(success_entry_distances)]
-        success_entry_distances = success_entry_distances[~np.isinf(success_entry_distances)]
-
-        n_successes,_ = np.histogram(success_entry_distances,bins)
-        curve1.set_ydata(n_successes.astype(float)/(fly_release_density_per_bin))
-
-        max_n = max(n_successes)
-
-        #(2)--------
-        failure_entry_distances = collector.failure_lengths[0,:]
-        failure_entry_distances = failure_entry_distances[~np.isnan(failure_entry_distances)]
-        failure_entry_distances = failure_entry_distances[~np.isinf(failure_entry_distances)]
-
-        n_failures,_ = np.histogram(failure_entry_distances,bins)
-        curve2.set_ydata(n_failures.astype(float)/(fly_release_density_per_bin))
-        max_n = max(max_n,max(n_failures))
-
-        #(6)--------
-        passed_through_distances = collector.passed_through_distances
-        passed_through_distances = passed_through_distances[~np.isnan(passed_through_distances)]
-        passed_through_distances = passed_through_distances[~np.isinf(passed_through_distances)]
-
-        n_passed,_ = np.histogram(passed_through_distances,bins)
-        curve6.set_ydata(n_passed.astype(float)/(fly_release_density_per_bin))
-        max_n = max(max_n,max(n_passed))
-
-        #(3)--------
-        no1stsuccess_distances = collector.didnt_succeed_first_time_distances
-        no1stsuccess_distances = no1stsuccess_distances[~np.isnan(no1stsuccess_distances)]
-        no1stsuccess_distances = no1stsuccess_distances[~np.isinf(no1stsuccess_distances)]
-
-        no1s_entries,_ = np.histogram(no1stsuccess_distances,bins)
-        curve3.set_ydata(no1s_entries.astype(float)/(fly_release_density_per_bin))
-        max_n = max(max_n,max(no1s_entries))
-
-        # print('----------')
-        # print(np.sum(no1s_entries==n_passed))
-        # print(np.sum(no1stsuccess_distances==passed_through_distances))
-        # print('----------')
-
-        #(4)--------
-        surging_distances = collector.compute_plume_distance(
-            swarm.x_position[swarm.mode == Mode_FlyUpWind],
-            swarm.y_position[swarm.mode == Mode_FlyUpWind])
-
-        surging_distances = surging_distances[~np.isnan(surging_distances)]
-        surging_distances = surging_distances[~np.isinf(surging_distances)]
-
-        n_surging,_ = np.histogram(surging_distances,bins)
-        curve4.set_ydata(n_surging.astype(float)/(fly_release_density_per_bin))
-        max_n = max(max_n,max(n_surging))
-
-        #(5)--------
-        casting_distances = collector.compute_plume_distance(
-            swarm.x_position[swarm.mode == Mode_CastForOdor],
-            swarm.y_position[swarm.mode == Mode_CastForOdor])
-        casting_distances  = casting_distances[~np.isnan(casting_distances)]
-        casting_distances  = casting_distances[~np.isinf(casting_distances)]
-
-        n_casting,_ = np.histogram(casting_distances,bins)
-        curve5.set_ydata(n_casting.astype(float)/(fly_release_density_per_bin))
-        max_n = max(max_n,max(n_casting))
+    # if t>0:
+    #     # Plotting
+    #     fly_dots.set_offsets(np.c_[swarm.x_position,swarm.y_position])
+    #     fly_edgecolors = [edgecolor_dict[mode] for mode in swarm.mode]
+    #     fly_facecolors =  [facecolor_dict[mode] for mode in swarm.mode]
+    #     fly_dots.set_edgecolor(fly_edgecolors)
+    #     fly_dots.set_facecolor(fly_facecolors)
+    #
+    #
+    #     if t<2.:
+    #         conc_array = array_gen.generate_single_array(plume_model.puffs)
+    #
+    #         log_im = np.log(conc_array.T[::-1])
+    #         cutoff_l = np.percentile(log_im[~np.isinf(log_im)],1)
+    #         cutoff_u = np.percentile(log_im[~np.isinf(log_im)],99)
+    #
+    #         conc_im.set_data(log_im)
+    #         n = matplotlib.colors.Normalize(vmin=cutoff_l,vmax=cutoff_u)
+    #         conc_im.set_norm(n)
 
 
-        ax.set_ylim([0,max_n/(fly_release_density_per_bin)])
-        ax2.set_ylim([0,max_n/(fly_release_density_per_bin)])
+        # writer.grab_frame()
 
-
-
-
-
-
-    if t>0:
-        # Plotting
-        fly_dots.set_offsets(np.c_[swarm.x_position,swarm.y_position])
-        fly_edgecolors = [edgecolor_dict[mode] for mode in swarm.mode]
-        fly_facecolors =  [facecolor_dict[mode] for mode in swarm.mode]
-        fly_dots.set_edgecolor(fly_edgecolors)
-        fly_dots.set_facecolor(fly_facecolors)
-
-
-        if t<2.:
-            conc_array = array_gen.generate_single_array(plume_model.puffs)
-
-            log_im = np.log(conc_array.T[::-1])
-            cutoff_l = np.percentile(log_im[~np.isinf(log_im)],1)
-            cutoff_u = np.percentile(log_im[~np.isinf(log_im)],99)
-
-            conc_im.set_data(log_im)
-            n = matplotlib.colors.Normalize(vmin=cutoff_l,vmax=cutoff_u)
-            conc_im.set_norm(n)
-
-
-        writer.grab_frame()
-
-        plt.pause(0.001)
+        # plt.pause(0.001)
 
 
 #Save the collector object with pickle
 with open(output_file, 'w') as f:
     swarm_param.update({'simulation_duration':t})
-    pickle.dump((swarm_param,collector),f)
-
-# pool = Pool(processes=4)
-
-# detection_thresholds = [0.025,0.05, 0.075,0.1,0.125,0.15,0.175,0.2,0.225]
-# f(0.05)
+    pickle.dump((swarm,swarm_param,collector,categorizer),f)

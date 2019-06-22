@@ -1,6 +1,8 @@
 import numpy as np
 import utility
 import time
+import odor_tracking_sim.swarm_models as swarm_models
+
 
 class TrackBoutCollector(object):
 
@@ -12,6 +14,7 @@ class TrackBoutCollector(object):
         self.failure_lengths = np.empty((2,0)) #will be an array whose columns contain [entry_distance,tracking_length]
         self.success_distances = np.empty(0) #will be a list of starting distances where the fly got to the trap
         self.passed_through_distances = np.full(num_flies,np.nan)
+        self.didnt_succeed_first_time_distances = np.full(num_flies,np.nan)
 
         self.repeats=repeats
         #Currently, setting repeats to False makes it such that once a fly
@@ -28,7 +31,10 @@ class TrackBoutCollector(object):
     #In each of the below fly_ids is a boolean of length num_flies
     def update_for_detection(self,fly_ids,x_pos,y_pos,ever_tracked=None):
 
-        entry_distances = self.compute_plume_distance(x_pos,y_pos)
+        # entry_distances = self.compute_plume_distance(x_pos,y_pos)
+        entry_distances = self.compute_plume_distance(np.copy(x_pos),np.copy(y_pos))
+
+
         self.entry_distances[fly_ids] = entry_distances
 
         #If a given fly has a non-nan passed_through_distances value, its doesn't
@@ -50,11 +56,11 @@ class TrackBoutCollector(object):
                     to_add,axis=1)
             else:
                 self.failure_lengths = to_add
-            self.entry_distances[fly_ids] = np.nan
 
-            # print(np.shape(self.failure_lengths))
-            # print(np.shape(to_add))
-            # raw_input()
+            #also update the didnt_succeed_first_time_distances variable
+            fly_ids = fly_ids & (np.isnan(self.didnt_succeed_first_time_distances))
+            self.didnt_succeed_first_time_distances[fly_ids] =  self.entry_distances[fly_ids]
+            self.entry_distances[fly_ids] = np.nan
 
     def update_for_trapped(self,fly_ids):
 
@@ -88,18 +94,12 @@ class TrackBoutCollector(object):
 
         #collapse along trap axis
         close_to_centerline_bool = np.sum(close_to_centerline_bool,axis=1).astype(bool)
-        # print('close to centerline: '+str(np.sum(close_to_centerline_bool)))
-
-        # if np.sum(close_to_centerline_xs<20.)>0:
-        #     print('---some flies passed thru---')
-        #     print('at distances '+str(close_to_centerline_xs[close_to_centerline_xs<20.]))
-        #     print(str(np.sqrt(np.square(
-        #         close_to_centerline_xs[close_to_centerline_xs<20.])+
-        #         np.square(close_to_centerline_ys[close_to_centerline_xs<20.]))))
-        #     time.sleep(.1)
 
         #If they satisfy this value, add them (tentatively to the mask of flies that passed through)
         self.passed_through_distances[close_to_centerline_bool] = close_to_centerline_xs
+
+        #also update the didnt_succeed_first_time_distances variable
+        self.didnt_succeed_first_time_distances[close_to_centerline_bool] = close_to_centerline_xs
 
         #Then, also check in with the mask of flies that detected odor (newly_surging) and cancel
         #out these indices to the list of passed through distances
@@ -107,6 +107,7 @@ class TrackBoutCollector(object):
         # self.passed_through_distances[newly_surging_ids] = np.nan
 
         # return(close_to_centerline_bool)
+
 
     def compute_plume_distance(self,x_pos,y_pos):
         # if np.shape(self.source_pos)[1]>1: #Case where there is more than one plume
@@ -136,3 +137,69 @@ class TrackBoutCollector(object):
         return closest_plume_xs
 
         # else: #Case where there is a single plume
+
+
+class FlyCategorizer(object):
+    '''Over the course of a simulation (1 plume simulation), track the
+    fates of each fly:
+    (-1) passed through without detecting
+    (np.nan) tracked but never found source
+    (0) successfully found source on 1st tracking bout
+    (1) successfully found source on 2nd tracking bout
+    ...
+
+
+    Works in collaboration with (depends on) a TrackBoutCollector object which is
+    simultaneously observing the swarm object.
+
+    '''
+
+    def __init__(self,num_flies):
+
+        self.fate_vector = np.full(num_flies,np.nan)
+        self.num_tracking_bouts = np.full(num_flies,0.)
+        self.fate_assigned_mask = np.full(num_flies,False,dtype=bool)
+
+    def update(self,swarm,collector,newly_trapped,newly_dispersing):
+
+
+        #assign the flies who passed straight through to the failure fate (fate_vector)
+        have_passed_through_bool = ~np.isnan(collector.passed_through_distances)
+        # print('--------')
+        # print(np.sum(have_passed_through_bool))
+        # print('--------')
+        # time.sleep(0.02)
+        mask = have_passed_through_bool & (~self.fate_assigned_mask)
+        # print(np.sum(mask))
+
+        self.fate_vector[mask] = -1.
+
+        # if np.sum(have_passed_through_bool)>0:
+        #     print(np.unique(self.fate_vector))
+        #     raw_input()
+
+
+        #assign the flies who arrived at the trap to the success fate *WITH*
+        #the number of tracking bouts
+
+        self.fate_vector[newly_trapped]  = self.num_tracking_bouts[newly_trapped]
+
+
+        #update the fated vs unfated screen
+        self.fate_assigned_mask = self.fate_assigned_mask | mask | newly_trapped
+
+        # print('----------')
+        # print(np.sum(self.fate_assigned_mask))
+        #
+        # print('____________')
+        # print(np.sum(self.fate_vector<0.))
+        # #This value is going to be a little different than
+        #np.sum(have_passed_through_bool) because np.sum(have_passed_through_bool)
+        #includes trapped flies
+
+        #for flies switching from casting to dispersing, add 1 to their tracking bout counts
+        self.num_tracking_bouts[newly_dispersing] += 1.
+        #
+        # if (np.sum(have_passed_through_bool)>0) and (np.sum(self.fate_vector<0.)<1.):
+        #     print(np.sum(self.fate_vector<0.))
+        #     raw_input()

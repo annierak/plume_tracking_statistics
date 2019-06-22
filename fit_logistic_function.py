@@ -27,20 +27,20 @@ def f(detection_threshold):
 
     file_name='1m_uniform_release_times_'
 
-    param_spec_string = 'detection_threshold_'+str(detection_threshold)
-    title_string = 'Detection Threshold: '+str(detection_threshold)
+    #param_spec_string = 'detection_threshold_'+str(detection_threshold)
+    #title_string = 'Detection Threshold: '+str(detection_threshold)
 
-    # param_spec_string = 'cast_timeout_'+str(detection_threshold)
-    # title_string = 'Cast Timeout: '+str(detection_threshold)
+    #param_spec_string = 'cast_timeout_'+str(detection_threshold)
+    #title_string = 'Cast Timeout: '+str(detection_threshold)
 
-    # param_spec_string = 'cast_delay_'+str(detection_threshold)
-    # title_string = 'Cast Delay: '+str(detection_threshold)
+    param_spec_string = 'cast_delay_'+str(detection_threshold)
+    title_string = 'Cast Delay: '+str(detection_threshold)
 
     # param_spec_string = 'errorless_surging_cast_delay_'+str(detection_threshold)
     # title_string = 'No Surging Error; Cast Delay: '+str(detection_threshold)
 
-    # param_spec_string = 'cast_interval_'+str(detection_threshold)
-    # title_string = 'Cast Interval: '+str(detection_threshold)
+    #param_spec_string = 'cast_interval_'+str(detection_threshold)
+    #title_string = 'Cast Interval: '+str(detection_threshold)
 
     # param_spec_string = 'default_params_iter_'+str(detection_threshold)
     # title_string = 'Default Params Iteration: '+str(detection_threshold)
@@ -74,6 +74,10 @@ def f(detection_threshold):
 
     bins=np.linspace(0,max_trap_distance,num_bins)
 
+    #temporary fix because of the bump -- chop off the front
+    bins=np.linspace(75,max_trap_distance,num_bins)
+
+
     plt.figure(figsize=(10,4))
     plt.xlim((0,max_trap_distance))
     n_successes,_,_ = plt.hist(success_entry_distances,bins,alpha=0.5,color='b',histtype='step')
@@ -87,6 +91,7 @@ def f(detection_threshold):
     plt.xlabel('Distance from Trap (m)')
     plt.ylabel('Trap Arrival Probability')
 
+    #plt.show()
 
     #Fitting portion
 
@@ -120,7 +125,7 @@ def f(detection_threshold):
 
     try:
         p_opt,p_cov = curve_fit(logistic3,bins[:-1],
-            probs,p0=initial_guess[1:],bounds=([-10.,-np.inf,10.,],[0.,np.inf,max_trap_distance]))
+            probs,p0=initial_guess,bounds=([-10.,-np.inf,10.,],[0.,np.inf,max_trap_distance]),maxfev=100000)
 
     except(RuntimeError):
         print('Fitting failed for '+str(file_name))
@@ -132,7 +137,7 @@ def f(detection_threshold):
 
     prob_est = logistic3(bins[:-1],K_est,B_est,x_0_est)
     plt.plot(bins[:-1],prob_est,color='red',label='logistic fit')
-    plt.plot(bins[:-1],logistic3(bins[:-1],*initial_guess[:-1   ]),color='orange')
+    #plt.plot(bins[:-1],logistic3(bins[:-1],*initial_guess),color='orange')
 
     # prob_est = logisticplus(bins[1:],K_est,B_est,x_0_est,c_est)
     # plt.plot(bins[:-1],prob_est,color='red',label='logistic fit')
@@ -154,9 +159,23 @@ def f(detection_threshold):
 
 
 
-# f(0.05)
+#f(0.125)
+
 
 # detection_thresholds = [0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225]
-detection_thresholds = [0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225]
+#detection_thresholds = [0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225]
+detection_thresholds = [0.2,0.225]
+detection_thresholds = [0.225]
+
+cast_timeouts = [10,15,40,60]
+cast_intervals = [[0.5,1.5],
+[1,3],
+[2,6]]
+
+cast_delays = [0.5,3,5,10]
+
 pool = Pool(processes=6)
-pool.map(f, detection_thresholds)
+#pool.map(f, detection_thresholds)
+#pool.map(f, cast_timeouts)
+#pool.map(f, cast_intervals)
+pool.map(f, cast_delays)
